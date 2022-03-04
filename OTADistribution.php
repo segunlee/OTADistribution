@@ -24,8 +24,10 @@ class OTADistribution {
 	protected $path;
 	// 대상 디렉토리 경로 (파일이 저장되는 곳)
 	protected $directory;
-	// URL
+	// 베이스 URL
 	protected $baseURL;
+	// 베이스 디렉토리
+	protected $baseDirectory;
 	// 파일명
 	public $fileName;
 	// 파일타입 (IPA, APK)
@@ -48,7 +50,13 @@ class OTADistribution {
 	 * @param      String  $directory  The directory
 	 */
 	public function __construct(String $path, String $directory) {
-		$this->baseURL = "http".((!empty($_SERVER['HTTPS'])) ? "s" : "")."://".$_SERVER['SERVER_NAME']."/";
+		$this->baseURL = "http".((!empty($_SERVER['HTTPS'])) ? "s" : "")."://".$_SERVER['SERVER_NAME'];
+		$this->baseDirectory = (strpos($_SERVER['REQUEST_URI'],".php")===false?$_SERVER['REQUEST_URI']:dirname($_SERVER['REQUEST_URI'])."/"); 
+		if( strpos( $this->baseDirectory, "?" ) > 0 ) {
+			$questionmark_position = strpos( $this->baseDirectory, "?" );
+			$this->baseDirectory = substr( $this->baseDirectory, 0, $questionmark_position);
+		}
+
 		$this->path = $path;
 		$this->directory = $directory;
 
@@ -79,7 +87,7 @@ class OTADistribution {
 	 * EXCUTE
 	 */
 	function excute() {
-		$resDir = OTADistribution::FILES_DIRECTORY.$this->directory."/".$this->fileName."/";
+		$resDir = OTADistribution::FILES_DIRECTORY.$this->directory.$this->fileName."/";
 		switch ($this->fileType) {
 			case FileType::IPA:
 				$this->createDirectoryIfNeeded($resDir);
@@ -145,7 +153,7 @@ class OTADistribution {
 			case FileType::APK:
 				$this->getAndroidMenifestXMLFromAPKIfNeeded($resDir, $path);
 				$this->parseAndroidMenifest($resDir);
-				$this->downloadURL = $this->baseURL.$this->path;
+				$this->downloadURL = $this->baseURL.$this->baseDirectory.$this->path;
 				break;
 
 			default:
@@ -176,8 +184,8 @@ class OTADistribution {
 	 * @param      String  $resDir  The resource dir
 	 */
 	function parseAndroidMenifest(String $resDir) {
-		if (file_exists(dirname(__FILE__)."/classes/apkParser/apkParser.php")) {
-			require_once(dirname(__FILE__)."/classes/apkParser/apkParser.php");
+		if (file_exists("classes/apkParser/apkParser.php")) {
+			require_once("classes/apkParser/apkParser.php");
 			$xml = file_get_contents($resDir.OTADistribution::APK_MENIFEST_FILE);
 			try {
 				$parser = new ApkParser();
@@ -213,8 +221,8 @@ class OTADistribution {
 	 * @param      String  $resDir  The resource dir
 	 */
 	function createIPAMenifest(String $resDir) {
-		if (file_exists(dirname(__FILE__)."/classes/cfpropertylist/CFPropertyList.php")) {
-			require_once(dirname(__FILE__)."/classes/cfpropertylist/CFPropertyList.php");
+		if (file_exists("classes/cfpropertylist/CFPropertyList.php")) {
+			require_once("classes/cfpropertylist/CFPropertyList.php");
 
 			$plist = new CFPropertyList($resDir.OTADistribution::IPA_INFO_PLIST_FILE);
 			$plistArray = $plist->toArray();
@@ -243,7 +251,7 @@ class OTADistribution {
 				<key>kind</key>
 				<string>software-package</string>
 				<key>url</key>
-				<string>'.$this->baseURL.$this->path.'</string>
+				<string>'.$this->baseURL.$this->baseDirectory.$this->path.'</string>
 			</dict>
 		</array>
 		<key>metadata</key>
@@ -266,7 +274,7 @@ class OTADistribution {
 
 
 			if (file_put_contents($resDir.OTADistribution::IPA_MANIFEST_FILE, $manifest)) {
-				$this->downloadURL = OTADistribution::IPA_DOWNLOAD_URL_PREFIX.$this->baseURL.$resDir.OTADistribution::IPA_MANIFEST_FILE;
+				$this->downloadURL = OTADistribution::IPA_DOWNLOAD_URL_PREFIX.$this->baseURL.$this->baseDirectory.$resDir.OTADistribution::IPA_MANIFEST_FILE;
 			} else {
 				die('manifest.plist 생성중 오류가 발생했습니다. 권한이 있는지 확인이 필요합니다.');
 			}
