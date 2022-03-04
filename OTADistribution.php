@@ -127,7 +127,7 @@ class OTADistribution {
 	 */
 	function createAndReadDescription(String $resDir) {
 		if (!file_exists($resDir.OTADistribution::DESCRIPTION_FILE)) {
-			if (!file_put_contents($resDir.OTADistribution::DESCRIPTION_FILE, "description")) {
+			if (!file_put_contents($resDir.OTADistribution::DESCRIPTION_FILE, "변경사항")) {
 				die("description 파일 생성에 실패했습니다. 권한이 있는지 확인이 필요합니다.");
 			}
 		}
